@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <memory>
 #include <chrono>
+#include <random>
+#include "engine/util/OrderIdGenerator.hpp"
 
 namespace engine {
 
@@ -55,6 +57,47 @@ public:
      * @param quantity Order quantity
      */
     Order(OrderId id, OrderSide side, OrderType type, Price price, Quantity quantity);
+
+    /**
+     * @brief Create a new order with an auto-generated ID
+     * 
+     * @param side BUY or SELL
+     * @param type Order type (currently only LIMIT)
+     * @param price Order price
+     * @param quantity Order quantity
+     * @return std::shared_ptr<Order> A shared pointer to the new order
+     */
+    static std::shared_ptr<Order> createOrder(
+        OrderSide side, OrderType type, Price price, Quantity quantity) {
+        
+        OrderId id = util::OrderIdGenerator::getInstance().getNextId();
+        return std::make_shared<Order>(id, side, type, price, quantity);
+    }
+    
+    /**
+     * @brief Create a random order for testing purposes
+     * 
+     * @param priceMin Minimum price
+     * @param priceMax Maximum price
+     * @param qtyMin Minimum quantity
+     * @param qtyMax Maximum quantity
+     * @return std::shared_ptr<Order> A shared pointer to the random order
+     */
+    static std::shared_ptr<Order> createRandomOrder(
+        double priceMin = 90.0, double priceMax = 110.0,
+        Quantity qtyMin = 1, Quantity qtyMax = 100) {
+        
+        static thread_local std::mt19937 gen(std::random_device{}());
+        std::uniform_real_distribution<> priceDist(priceMin, priceMax);
+        std::uniform_int_distribution<Quantity> qtyDist(qtyMin, qtyMax);
+        std::bernoulli_distribution sideDist(0.5); // 50% buy, 50% sell
+        
+        OrderSide side = sideDist(gen) ? OrderSide::BUY : OrderSide::SELL;
+        double price = std::round(priceDist(gen) * 100) / 100; // Round to 2 decimal places
+        Quantity qty = qtyDist(gen);
+        
+        return createOrder(side, OrderType::LIMIT, price, qty);
+    }
 
     // Getters
     OrderId getId() const { return id_; }

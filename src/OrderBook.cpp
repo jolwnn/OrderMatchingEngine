@@ -1,4 +1,4 @@
-#include "engine/OrderBook.h"
+#include "engine/OrderBook.hpp"
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -9,6 +9,8 @@ namespace engine {
 OrderBook::OrderBook() = default;
 
 std::vector<Trade> OrderBook::addOrder(OrderPtr order, TradeCallback tradeCallback) {
+    // Lock exclusively as we're modifying the order book
+    std::unique_lock<std::shared_mutex> lock(mutex_);
     std::vector<Trade> trades;
     
     // Try to match the order first
@@ -34,6 +36,7 @@ std::vector<Trade> OrderBook::addOrder(OrderPtr order, TradeCallback tradeCallba
 }
 
 Order::Price OrderBook::getBestBidPrice() const {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
     if (buyOrders_.empty()) {
         return 0.0;  // No bids
     }
@@ -41,6 +44,7 @@ Order::Price OrderBook::getBestBidPrice() const {
 }
 
 Order::Price OrderBook::getBestAskPrice() const {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
     if (sellOrders_.empty()) {
         return std::numeric_limits<Order::Price>::max();  // No asks
     }
@@ -48,6 +52,7 @@ Order::Price OrderBook::getBestAskPrice() const {
 }
 
 std::string OrderBook::toString() const {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
     std::ostringstream oss;
     oss << "ORDER BOOK\n"
         << "-------------------------------------------\n"
@@ -166,6 +171,16 @@ std::vector<Trade> OrderBook::matchSellOrder(OrderPtr sellOrder, TradeCallback t
     }
     
     return trades;
+}
+
+size_t OrderBook::getBuyOrderCount() const {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    return buyOrders_.size();
+}
+
+size_t OrderBook::getSellOrderCount() const {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    return sellOrders_.size();
 }
 
 } // namespace engine

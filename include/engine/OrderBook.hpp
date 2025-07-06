@@ -1,12 +1,14 @@
 #pragma once
 
-#include "Order.h"
-#include "Trade.h"
+#include "Order.hpp"
+#include "Trade.hpp"
 #include <map>
 #include <set>
 #include <memory>
 #include <vector>
 #include <functional>
+#include <mutex>
+#include <shared_mutex>  // For readers-writer lock
 
 namespace engine {
 
@@ -42,6 +44,7 @@ struct SellOrderComparator {
  * @brief Class representing a limit order book
  * 
  * Maintains separate books for buy and sell orders and implements matching logic.
+ * Thread-safe implementation using readers-writer locks.
  */
 class OrderBook {
 public:
@@ -55,6 +58,8 @@ public:
     /**
      * @brief Add an order to the book and perform matching
      * 
+     * Thread-safe implementation.
+     * 
      * @param order The order to add
      * @param tradeCallback Callback for trade notifications
      * @return std::vector<Trade> Vector of trades generated from this order
@@ -64,6 +69,8 @@ public:
     /**
      * @brief Get best bid price (highest buy price)
      * 
+     * Thread-safe implementation.
+     * 
      * @return Order::Price The best bid price or 0 if no bids
      */
     Order::Price getBestBidPrice() const;
@@ -71,14 +78,28 @@ public:
     /**
      * @brief Get best ask price (lowest sell price)
      * 
+     * Thread-safe implementation.
+     * 
      * @return Order::Price The best ask price or max double if no asks
      */
     Order::Price getBestAskPrice() const;
     
     /**
      * @brief Print the current state of the order book
+     * 
+     * Thread-safe implementation.
      */
     std::string toString() const;
+    
+    /**
+     * @brief Get the number of buy orders in the book
+     */
+    size_t getBuyOrderCount() const;
+    
+    /**
+     * @brief Get the number of sell orders in the book
+     */
+    size_t getSellOrderCount() const;
     
 private:
     using BuyOrderBook = std::multiset<OrderPtr, BuyOrderComparator>;
@@ -88,8 +109,14 @@ private:
     SellOrderBook sellOrders_;
     OrderMap orderMap_;  // For fast lookups by ID
     
+    // Reader-writer lock for concurrent access
+    mutable std::shared_mutex mutex_;
+    
     /**
      * @brief Match a new buy order against the sell book
+     * 
+     * Note: This method is NOT thread-safe on its own and should be called
+     * with appropriate locking in place.
      * 
      * @param buyOrder Buy order to match
      * @param tradeCallback Callback for trade notifications
@@ -99,6 +126,9 @@ private:
     
     /**
      * @brief Match a new sell order against the buy book
+     * 
+     * Note: This method is NOT thread-safe on its own and should be called
+     * with appropriate locking in place.
      * 
      * @param sellOrder Sell order to match
      * @param tradeCallback Callback for trade notifications
