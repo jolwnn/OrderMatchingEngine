@@ -1,1 +1,0 @@
-/usr/bin/c++  -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/OrderMatchingEngine.dir/src/main.cpp.o CMakeFiles/OrderMatchingEngine.dir/src/Order.cpp.o CMakeFiles/OrderMatchingEngine.dir/src/OrderBook.cpp.o CMakeFiles/OrderMatchingEngine.dir/src/MatchingEngine.cpp.o CMakeFiles/OrderMatchingEngine.dir/src/Trade.cpp.o -o OrderMatchingEngine
