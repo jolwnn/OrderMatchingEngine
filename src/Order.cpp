@@ -41,8 +41,14 @@ std::string Order::toString() const {
     std::ostringstream oss;
     oss << "Order{id=" << id_ 
         << ", side=" << (side_ == OrderSide::BUY ? "BUY" : "SELL")
-        << ", price=" << std::fixed << std::setprecision(2) << price_
-        << ", qty=" << quantity_
+        << ", type=" << (type_ == OrderType::LIMIT ? "LIMIT" : "MARKET");
+    
+    // Only display price for limit orders
+    if (type_ == OrderType::LIMIT) {
+        oss << ", price=" << std::fixed << std::setprecision(2) << price_;
+    }
+    
+    oss << ", qty=" << quantity_
         << ", filled=" << filledQuantity_
         << ", status=";
         

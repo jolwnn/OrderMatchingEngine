@@ -20,8 +20,12 @@ std::vector<Trade> OrderBook::addOrder(OrderPtr order, TradeCallback tradeCallba
         trades = matchSellOrder(order, tradeCallback);
     }
     
-    // If the order is not fully filled, add it to the book
-    if (order->getRemainingQuantity() > 0 && order->getStatus() != OrderStatus::CANCELED) {
+    // If the order is not fully filled, add it to the book (only for limit orders)
+    // Market orders that aren't fully filled will not be added to the book
+    if (order->getRemainingQuantity() > 0 && 
+        order->getStatus() != OrderStatus::CANCELED && 
+        order->getType() == OrderType::LIMIT) {
+        
         if (order->getSide() == OrderSide::BUY) {
             buyOrders_.insert(order);
         } else {
@@ -100,9 +104,10 @@ std::vector<Trade> OrderBook::matchBuyOrder(OrderPtr buyOrder, TradeCallback tra
         auto bestSell = sellOrders_.begin();
         auto sellOrder = *bestSell;
         
-        // Check if we can match price
-        if (buyOrder->getPrice() < sellOrder->getPrice()) {
-            break;  // No more matches possible
+        // For limit orders, check if we can match price
+        // Market orders always match against best available price
+        if (buyOrder->getType() == OrderType::LIMIT && buyOrder->getPrice() < sellOrder->getPrice()) {
+            break;  // No more matches possible for limit orders below the best sell price
         }
         
         // Calculate trade quantity
@@ -129,6 +134,11 @@ std::vector<Trade> OrderBook::matchBuyOrder(OrderPtr buyOrder, TradeCallback tra
         }
     }
     
+    // If it's a market order that couldn't be fully filled, mark remaining as canceled
+    if (buyOrder->getType() == OrderType::MARKET && remainingQty > 0) {
+        buyOrder->cancel();
+    }
+    
     return trades;
 }
 
@@ -141,9 +151,10 @@ std::vector<Trade> OrderBook::matchSellOrder(OrderPtr sellOrder, TradeCallback t
         auto bestBuy = buyOrders_.begin();
         auto buyOrder = *bestBuy;
         
-        // Check if we can match price
-        if (sellOrder->getPrice() > buyOrder->getPrice()) {
-            break;  // No more matches possible
+        // For limit orders, check if we can match price
+        // Market orders always match against best available price
+        if (sellOrder->getType() == OrderType::LIMIT && sellOrder->getPrice() > buyOrder->getPrice()) {
+            break;  // No more matches possible for limit orders above the best buy price
         }
         
         // Calculate trade quantity
@@ -168,6 +179,11 @@ std::vector<Trade> OrderBook::matchSellOrder(OrderPtr sellOrder, TradeCallback t
             buyOrders_.erase(bestBuy);
             orderMap_.erase(buyOrder->getId());
         }
+    }
+    
+    // If it's a market order that couldn't be fully filled, mark remaining as canceled
+    if (sellOrder->getType() == OrderType::MARKET && remainingQty > 0) {
+        sellOrder->cancel();
     }
     
     return trades;

@@ -211,6 +211,75 @@ void runPerformanceBenchmark() {
     engine.stop();
 }
 
+// Demo specifically for market orders
+void runMarketOrderDemo(MatchingEngine& engine) {
+    std::cout << "\n==== Market Order Demo ====" << std::endl;
+    
+    // Start with a fresh engine
+    engine.start();
+    
+    // Add some initial orders to create a book with some depth
+    std::cout << "Adding initial limit orders to the book:" << std::endl;
+    
+    // Add some buy orders at different price levels
+    engine.processOrderSync(Order::createOrder(OrderSide::BUY, OrderType::LIMIT, 100.0, 10));
+    engine.processOrderSync(Order::createOrder(OrderSide::BUY, OrderType::LIMIT, 99.0, 20));
+    engine.processOrderSync(Order::createOrder(OrderSide::BUY, OrderType::LIMIT, 98.0, 30));
+    
+    // Add some sell orders at different price levels
+    engine.processOrderSync(Order::createOrder(OrderSide::SELL, OrderType::LIMIT, 102.0, 15));
+    engine.processOrderSync(Order::createOrder(OrderSide::SELL, OrderType::LIMIT, 103.0, 25));
+    engine.processOrderSync(Order::createOrder(OrderSide::SELL, OrderType::LIMIT, 104.0, 35));
+    
+    // Print the current state of the order book
+    std::cout << "\nCurrent Order Book:" << std::endl;
+    std::cout << engine.getOrderBook().toString() << std::endl;
+    
+    // Demonstrate a market buy order - should execute at the best available sell price (102.0)
+    std::cout << "\nAdding a market BUY order for 10 units:" << std::endl;
+    auto marketBuy = Order::createMarketOrder(OrderSide::BUY, 10);
+    auto tradesBuy = engine.processOrderSync(marketBuy);
+    std::cout << "Market buy order: " << marketBuy->toString() << std::endl;
+    std::cout << "Trades executed: " << tradesBuy.size() << std::endl;
+    for (const auto& trade : tradesBuy) {
+        std::cout << "  " << trade.toString() << std::endl;
+    }
+    
+    // Print the updated order book
+    std::cout << "\nUpdated Order Book after market BUY:" << std::endl;
+    std::cout << engine.getOrderBook().toString() << std::endl;
+    
+    // Demonstrate a market sell order - should execute at the best available buy price (100.0)
+    std::cout << "\nAdding a market SELL order for 25 units:" << std::endl;
+    auto marketSell = Order::createMarketOrder(OrderSide::SELL, 25);
+    auto tradesSell = engine.processOrderSync(marketSell);
+    std::cout << "Market sell order: " << marketSell->toString() << std::endl;
+    std::cout << "Trades executed: " << tradesSell.size() << std::endl;
+    for (const auto& trade : tradesSell) {
+        std::cout << "  " << trade.toString() << std::endl;
+    }
+    
+    // Print the updated order book
+    std::cout << "\nUpdated Order Book after market SELL:" << std::endl;
+    std::cout << engine.getOrderBook().toString() << std::endl;
+    
+    // Demonstrate a market order that will be partially filled
+    std::cout << "\nAdding a market BUY order for 100 units (will be partially filled):" << std::endl;
+    auto largeBuy = Order::createMarketOrder(OrderSide::BUY, 100);
+    auto tradesPartial = engine.processOrderSync(largeBuy);
+    std::cout << "Large market buy order: " << largeBuy->toString() << std::endl;
+    std::cout << "Trades executed: " << tradesPartial.size() << std::endl;
+    for (const auto& trade : tradesPartial) {
+        std::cout << "  " << trade.toString() << std::endl;
+    }
+    
+    // Print the final order book
+    std::cout << "\nFinal Order Book:" << std::endl;
+    std::cout << engine.getOrderBook().toString() << std::endl;
+    
+    engine.stop();
+}
+
 int main(int argc, char* argv[]) {
     std::cout << "Concurrent Order Matching Engine Demo" << std::endl;
     std::cout << "====================================" << std::endl;
@@ -227,6 +296,10 @@ int main(int argc, char* argv[]) {
         // Run the basic demo
         runBasicDemo(basicEngine);
         basicEngine.stop();
+        
+        // Run the market order demo
+        MatchingEngine marketEngine(1);
+        runMarketOrderDemo(marketEngine);
         
         // Run the concurrent demo with multiple producers
         runConcurrentDemo(4, 100);

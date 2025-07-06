@@ -21,7 +21,8 @@ enum class OrderSide {
  * @brief Enumeration for order type
  */
 enum class OrderType {
-    LIMIT,   // Future: MARKET, STOP, etc.
+    LIMIT,   // Limit order - executed at a specific price or better
+    MARKET   // Market order - executed at the best available price
 };
 
 /**
@@ -52,8 +53,8 @@ public:
      * 
      * @param id Unique order identifier
      * @param side BUY or SELL
-     * @param type Order type (currently only LIMIT)
-     * @param price Order price
+     * @param type Order type (LIMIT or MARKET)
+     * @param price Order price (not used for MARKET orders)
      * @param quantity Order quantity
      */
     Order(OrderId id, OrderSide side, OrderType type, Price price, Quantity quantity);
@@ -62,8 +63,8 @@ public:
      * @brief Create a new order with an auto-generated ID
      * 
      * @param side BUY or SELL
-     * @param type Order type (currently only LIMIT)
-     * @param price Order price
+     * @param type Order type (LIMIT or MARKET)
+     * @param price Order price (ignored for MARKET orders)
      * @param quantity Order quantity
      * @return std::shared_ptr<Order> A shared pointer to the new order
      */
@@ -75,28 +76,44 @@ public:
     }
     
     /**
+     * @brief Create a new market order with an auto-generated ID
+     * 
+     * @param side BUY or SELL
+     * @param quantity Order quantity
+     * @return std::shared_ptr<Order> A shared pointer to the new market order
+     */
+    static std::shared_ptr<Order> createMarketOrder(OrderSide side, Quantity quantity) {
+        OrderId id = util::OrderIdGenerator::getInstance().getNextId();
+        return std::make_shared<Order>(id, side, OrderType::MARKET, 0.0, quantity);
+    }
+    
+    /**
      * @brief Create a random order for testing purposes
      * 
      * @param priceMin Minimum price
      * @param priceMax Maximum price
      * @param qtyMin Minimum quantity
      * @param qtyMax Maximum quantity
+     * @param marketOrderProbability Probability of generating a market order (0.0 to 1.0)
      * @return std::shared_ptr<Order> A shared pointer to the random order
      */
     static std::shared_ptr<Order> createRandomOrder(
         double priceMin = 90.0, double priceMax = 110.0,
-        Quantity qtyMin = 1, Quantity qtyMax = 100) {
+        Quantity qtyMin = 1, Quantity qtyMax = 100,
+        double marketOrderProbability = 0.2) {
         
         static thread_local std::mt19937 gen(std::random_device{}());
         std::uniform_real_distribution<> priceDist(priceMin, priceMax);
         std::uniform_int_distribution<Quantity> qtyDist(qtyMin, qtyMax);
         std::bernoulli_distribution sideDist(0.5); // 50% buy, 50% sell
+        std::bernoulli_distribution typeDist(marketOrderProbability); // Probability of market order
         
         OrderSide side = sideDist(gen) ? OrderSide::BUY : OrderSide::SELL;
+        OrderType type = typeDist(gen) ? OrderType::MARKET : OrderType::LIMIT;
         double price = std::round(priceDist(gen) * 100) / 100; // Round to 2 decimal places
         Quantity qty = qtyDist(gen);
         
-        return createOrder(side, OrderType::LIMIT, price, qty);
+        return createOrder(side, type, price, qty);
     }
 
     // Getters
