@@ -1,6 +1,6 @@
 # Order Matching Engine
 
-A professional-grade order book and order matching engine implemented in C++17. This project implements a limit order book with price-time priority matching, with concurrent order processing capabilities.
+A order book and order matching engine implemented in C++17. This project implements a limit and market order book with price-time priority matching, with concurrent order processing capabilities. (This project is 100% for my own learning, feel free to refer to it if you would like to implement your own!)
 
 ## Features
 
@@ -106,7 +106,3 @@ The concurrent foundation can be further extended to support:
 - REST or WebSocket API interfaces
 - Persistence layer for order storage
 - Batched order processing for higher throughput
-
-## License
-
-This project is for educational purposes and personal portfolio use.
